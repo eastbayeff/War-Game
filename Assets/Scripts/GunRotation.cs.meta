@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: ef2fdf97704a5ad46a4e671ed8b9e1a9
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - controller: {instanceID: 0}
+  - gun: {instanceID: 0}
+  - player: {instanceID: 0}
+  - BulletTrail: {fileID: 2431719553852387240, guid: 0930218cd9074f948920086b441ffd5a, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b0ef52960de652458f70a791cf9e18a, type: 3}
+  m_Name: Tommy
+  m_EditorClassIdentifier: 
+  Name: Thompson SMG
+  description: Submachine Gun utilized by the United States Military
+  art: {fileID: 3983602270529497539, guid: 5a7011d2acca3204ca9d8a209e0016f8, type: 3}
+  prefab: {fileID: 324629506145604359, guid: 6692ee8a986f9fc48b0cff17e39a71fd, type: 3}
+  GunFocusSpeed: 0.75
+  MaxAccuracyVariance: 0.75
+  GunUnFocusSpeed: 0.5
+  GunRecoil: 0.9
+  Damage: 25
+  Automatic: 1
+  fireRate: 0.2
+  reloadSpeed: 0
+  currentAmmo: 20
+  MaxAmmo: 20
+  SoundAreaMultiplier: 1.5
