@@ -3291,8 +3291,8 @@ MonoBehaviour:
   poolNew: {fileID: 0}
   shootTime: 3
   radius: 6
-  pause: 2
-  investigateTime: 5
+  pause: 0
+  investigateTime: 0
 --- !u!114 &1697252432
 MonoBehaviour:
   m_ObjectHideFlags: 0

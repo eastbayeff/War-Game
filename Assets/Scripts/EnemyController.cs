@@ -82,7 +82,7 @@ public class EnemyController : MonoBehaviour
     [SerializeField] float pause;
     [SerializeField] float investigateTime;
 
-    bool HasInvestigatedRandomTarget = false;
+    Vector3 randomInvestigationPosition = Vector3.zero;
 
 
     Vector3 playerpos;
@@ -116,12 +116,9 @@ public class EnemyController : MonoBehaviour
         }
     }
 
-
-
-
-    void RandomPosition()
+    Vector3 GetRandomPositionAroundSound()
     {
-        target.position = transform.position + Random.insideUnitSphere * radius;
+        return LastKnownPosition + Random.insideUnitSphere * radius;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -188,36 +185,42 @@ public class EnemyController : MonoBehaviour
                 break;
 
             case EnemyState.Investigate:
-                target.position = LastKnownPosition;
+                // set our target based on whether we're randomly investigating or headed to the last known position
+                target.position = randomInvestigationPosition == Vector3.zero ? LastKnownPosition : randomInvestigationPosition;
 
+                var arrived = distanceToTarget < stopDistanceThreshold;
 
-                if (target.position == LastKnownPosition && distanceToTarget < stopDistanceThreshold)
+                // did we get to the place we heard the shot?        
+                AtShootPosition = arrived && target.position == LastKnownPosition;
+
+                // did we get to the random point we were investigating?
+                if (arrived && target.position == randomInvestigationPosition)
                 {
-                    AtShootPosition = true;
+                    randomInvestigationPosition = GetRandomPositionAroundSound();
+                    target.position = randomInvestigationPosition;
                 }
 
+                // if we're investgating, reduce the investigate timer
+                if (randomInvestigationPosition != Vector3.zero)
+                    investigateTime -= Time.deltaTime; 
 
-                if(AtShootPosition)
+                if (investigateTime <= 0)
                 {
+                    randomInvestigationPosition = Vector3.zero;
+                    Debug.Log("Done Investigating");
+                }
 
-
+                if (AtShootPosition)
+                {
                     pause -= Time.deltaTime;
-                    if(pause <= 0)
+
+                    // once the pause timer has expired, we're no longer at the shoot position, so we start randomly investigating
+                    if (pause <= 0)
                     {
-                        investigateTime -= Time.deltaTime;
-
-          
-                        if (!HasInvestigatedRandomTarget)
-                        {
-                            RandomPosition();
-                        }
-                        else if(investigateTime >= 0 && distanceToTarget < stopDistanceThreshold)
-                        {
-                            HasInvestigatedRandomTarget = true;
-                        }
+                        AtShootPosition = false;
+                        randomInvestigationPosition = GetRandomPositionAroundSound();
+                        target.position = randomInvestigationPosition;
                     }
-
-
                 }
 
                 break;
