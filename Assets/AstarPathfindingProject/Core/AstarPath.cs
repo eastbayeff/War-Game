@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using Pathfinding;
 #if UNITY_5_5_OR_NEWER
 using UnityEngine.Profiling;
+using UnityEngine.PlayerLoop;
+
 #endif
 
 #if NETFX_CORE
@@ -1031,15 +1033,15 @@ public class AstarPath : VersionedMonoBehaviour {
 		graphUpdateRoutineRunning = false;
 	}
 
-	/// <summary>
-	/// Update all graphs within bounds after delay seconds.
-	/// The graphs will be updated as soon as possible.
-	///
-	/// See: FlushGraphUpdates
-	/// See: batchGraphUpdates
-	/// See: graph-updates (view in online documentation for working links)
-	/// </summary>
-	public void UpdateGraphs (Bounds bounds, float delay) {
+    /// <summary>
+    /// Update all graphs within bounds after delay seconds.
+    /// The graphs will be updated as soon as possible.
+    ///
+    /// See: FlushGraphUpdates
+    /// See: batchGraphUpdates
+    /// See: graph-updates (view in online documentation for working links)
+    /// </summary>
+    public void UpdateGraphs (Bounds bounds, float delay) {
 		UpdateGraphs(new GraphUpdateObject(bounds), delay);
 	}
 

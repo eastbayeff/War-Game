@@ -21,7 +21,7 @@ public class EnemyBulletController : MonoBehaviour
         poolNew = GameObject.FindGameObjectWithTag("ObjectPool").GetComponent<ObjectPoolNew>();
     }
 
-    public void InitializeEnemy()
+    public void InitializeEnemy(Guns gun, float movementamount)
     {
         player = GameObject.FindGameObjectWithTag("Player");
 
@@ -32,9 +32,9 @@ public class EnemyBulletController : MonoBehaviour
         Quaternion randomRotation = Quaternion.Euler(
             0,
             0,
-            Random.Range(-playerS.crosshairmovmentAmount * 12, playerS.crosshairmovmentAmount * 12)
+            Random.Range(-movementamount * 12, movementamount * 12)
         );
-
+        
         Vector3 direction = (player.transform.position - transform.position).normalized;
 
         Vector3 rotatedVector = randomRotation * direction;

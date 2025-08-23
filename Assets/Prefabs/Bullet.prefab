@@ -213,6 +213,7 @@ MonoBehaviour:
   gunRotation: {fileID: 0}
   bulletSpeed: 1000
   mouseposition: {x: 0, y: 0, z: 0}
+  playerS: {fileID: 0}
 --- !u!50 &612134976401085229
 Rigidbody2D:
   serializedVersion: 5
@@ -225,7 +226,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 1
+  m_Mass: 0.0001
   m_LinearDamping: 0
   m_AngularDamping: 0
   m_GravityScale: 0

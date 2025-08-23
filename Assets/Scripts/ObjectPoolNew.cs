@@ -56,7 +56,6 @@ public class ObjectPoolNew : MonoBehaviour
             {
                 GameObject.SetActive(true);
                 GameObject.GetComponent<EnemyBulletController>().playerS = playerScript;
-                GameObject.GetComponent<EnemyBulletController>().InitializeEnemy();
             },
             GameObject =>
             {

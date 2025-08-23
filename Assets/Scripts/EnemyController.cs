@@ -4,12 +4,13 @@ using System.Linq;
 using Pathfinding;
 using TMPro;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 public class EnemyController : MonoBehaviour
 {
-    enum EnemyState
+    public enum EnemyState
     {
         Patrol,
         Investigate,
@@ -20,25 +21,22 @@ public class EnemyController : MonoBehaviour
         Flee,
     }
 
+    public EnemyState enemyState;
+
     private AIPath aiPath;
 
     public float Health = 100;
+
+    [Header("Movement")]
+    [SerializeField]
+    float stopDistanceThreshold;
+    private float distanceToTarget;
 
     [SerializeField]
     float movespeed;
 
     [SerializeField]
-    Transform target;
-
-    [SerializeField]
-    float stopDistanceThreshold;
-    private float distanceToTarget;
-
-    SpriteRenderer rend;
-    bool Hit = false;
-
-    [SerializeField]
-    bool isPointBased = false;
+    Vector3 target;
 
     [SerializeField]
     List<GameObject> points;
@@ -46,22 +44,62 @@ public class EnemyController : MonoBehaviour
     [SerializeField]
     int pointcount = 0;
 
-    private EnemyState enemyState;
+    SpriteRenderer rend;
 
-    [SerializeField] bool isTakingCover = false;
-    [SerializeField] float shootDistance = 10f;
+    [Header("Bools")]
+    bool Hit = false;
 
+    [SerializeField]
+    bool isPointBased = false;
+
+    [SerializeField]
+    bool isTakingCover = false;
+
+    private bool _atShootPosition = false;
+
+    private bool Agro = false;
+    bool Locating = false;
+
+    [Header("Shooting")]
+    [SerializeField]
+    float shootDistance = 10f;
+
+    [SerializeField]
+    float shootTime;
+
+    [SerializeField]
+    float radius = 2f;
+
+    [SerializeField]
+    float attackLength;
+
+    [Header("Cover")]
     private GameObject Player;
     public float coverWaittime;
 
     [SerializeField]
     ObjectPoolNew poolNew;
 
-    [SerializeField]float shootTime;
+    float LocateTime;
 
-    [SerializeField] float radius = 2f;
+    Vector3 LastKnownPosition;
 
-    private bool _atShootPosition = false;
+    [SerializeField]
+    Guns weapon;
+
+    float crosshairmovmentAmount;
+    float MaxAccuracyVariance;
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.CompareTag("SoundArea"))
+        {
+            LastKnownPosition = collision.transform.position;
+            AtShootPosition = false;
+            randomInvestigationPosition = Vector3.zero;
+            enemyState = EnemyState.Investigate;
+        }
+    }
 
     void ResetInvestigationTimes()
     {
@@ -69,23 +107,40 @@ public class EnemyController : MonoBehaviour
         investigateTime = Random.Range(8f, 10f);
     }
 
+    public void AgroEnemy()
+    {
+        Agro = true;
+    }
+
+    public void DeAgroEnemy()
+    {
+        Agro = false;
+    }
+
     public bool AtShootPosition
     {
         get { return _atShootPosition; }
-        set { if (_atShootPosition != value) { 
+        set
+        {
+            if (_atShootPosition != value)
+            {
                 _atShootPosition = value;
                 ResetInvestigationTimes();
-            }; }
+            }
+            ;
+        }
     }
 
+    [SerializeField]
+    float pause;
 
-    [SerializeField] float pause;
-    [SerializeField] float investigateTime;
+    [SerializeField]
+    float investigateTime;
 
     Vector3 randomInvestigationPosition = Vector3.zero;
 
-
     Vector3 playerpos;
+
     private void Start()
     {
         poolNew = GameObject.FindGameObjectWithTag("ObjectPool").GetComponent<ObjectPoolNew>();
@@ -93,6 +148,7 @@ public class EnemyController : MonoBehaviour
         coverWaittime = Random.Range(3f, 5f);
         shootTime = 1f;
         Player = GameObject.FindGameObjectWithTag("Player");
+        attackLength = Random.Range(2f, 3f);
 
         rend = GetComponent<SpriteRenderer>();
         aiPath = GetComponent<AIPath>();
@@ -112,8 +168,10 @@ public class EnemyController : MonoBehaviour
 
         if (points.Count > 0)
         {
-            target = points[0].transform;
+            target = points[0].transform.position;
         }
+
+        MaxAccuracyVariance = weapon.MaxAccuracyVariance;
     }
 
     Vector3 GetRandomPositionAroundSound()
@@ -130,25 +188,57 @@ public class EnemyController : MonoBehaviour
         }
     }
 
-    Transform playerposition;
-    Vector3 LastKnownPosition;
-
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if(collision.gameObject.CompareTag("SoundArea"))
-        {
-            playerposition = collision.gameObject.transform;
-            enemyState = EnemyState.Investigate;
-            LastKnownPosition = playerposition.transform.position;
-            AtShootPosition = false;
-        }
-    }
-
     private void Update()
     {
+        crosshairmovmentAmount = Random.Range(0f, MaxAccuracyVariance);
+
+        crosshairmovmentAmount = Mathf.Clamp(crosshairmovmentAmount, 0.2f, MaxAccuracyVariance);
+
         int layerMask = LayerMask.GetMask("Player", "Obstacles");
 
-        RaycastHit2D hit = Physics2D.Raycast(gameObject.transform.position, gameObject.transform.up, shootDistance, layerMask);
+        if (Agro && !Locating)
+        {
+            RaycastHit2D visionhit = Physics2D.Raycast(
+                gameObject.transform.position,
+                Player.transform.position - transform.position,
+                7f,
+                layerMask
+            );
+
+            if (visionhit.collider != null)
+            {
+                if (visionhit.collider.CompareTag("Player"))
+                {
+                    Debug.Log("Player Spotted!");
+                    enemyState = EnemyState.LocatePlayer;
+                    LocateTime = Random.Range(8, 12);
+                    target = Player.transform.position;
+                    AtShootPosition = false;
+                    randomInvestigationPosition = Vector3.zero;
+
+                    Debug.DrawRay(
+                        transform.position,
+                        Player.transform.position - transform.position,
+                        Color.green
+                    );
+                }
+            }
+            else
+            {
+                Debug.DrawRay(
+                    transform.position,
+                    Player.transform.position - transform.position,
+                    Color.red
+                );
+            }
+        }
+
+        RaycastHit2D hit = Physics2D.Raycast(
+            gameObject.transform.position,
+            gameObject.transform.up,
+            shootDistance,
+            layerMask
+        );
 
         if (isTakingCover)
         {
@@ -156,17 +246,19 @@ public class EnemyController : MonoBehaviour
         }
 
         Debug.Log(enemyState);
-        aiPath.destination = target.position;
+        aiPath.destination = target;
         aiPath.maxSpeed = movespeed;
 
-        distanceToTarget = Vector2.Distance(target.position, transform.position);
+        distanceToTarget = Vector2.Distance(target, transform.position);
 
         switch (enemyState)
         {
             case EnemyState.Patrol:
+                Locating = false;
+
                 if (isPointBased)
                 {
-                    target = points[pointcount].transform;
+                    target = points[pointcount].transform.position;
 
                     if (distanceToTarget < stopDistanceThreshold)
                     {
@@ -174,7 +266,7 @@ public class EnemyController : MonoBehaviour
                     }
                     else
                     {
-                        aiPath.destination = target.position;
+                        aiPath.destination = target;
                     }
 
                     if (pointcount >= points.Count)
@@ -185,28 +277,43 @@ public class EnemyController : MonoBehaviour
                 break;
 
             case EnemyState.Investigate:
+
+                Locating = false;
                 // set our target based on whether we're randomly investigating or headed to the last known position
-                target.position = randomInvestigationPosition == Vector3.zero ? LastKnownPosition : randomInvestigationPosition;
+                target =
+                    randomInvestigationPosition == Vector3.zero
+                        ? LastKnownPosition
+                        : randomInvestigationPosition;
 
                 var arrived = distanceToTarget < stopDistanceThreshold;
 
-                // did we get to the place we heard the shot?        
-                AtShootPosition = arrived && target.position == LastKnownPosition;
+                // did we get to the place we heard the shot?
+                AtShootPosition = arrived && target == LastKnownPosition;
 
                 // did we get to the random point we were investigating?
-                if (arrived && target.position == randomInvestigationPosition)
+                if (arrived && target == randomInvestigationPosition)
                 {
                     randomInvestigationPosition = GetRandomPositionAroundSound();
-                    target.position = randomInvestigationPosition;
+                    if (
+                        Physics2D.OverlapPoint(
+                            randomInvestigationPosition,
+                            LayerMask.GetMask("Obstacles")
+                        )
+                    )
+                    {
+                        randomInvestigationPosition = GetRandomPositionAroundSound();
+                    }
+                    target = randomInvestigationPosition;
                 }
 
                 // if we're investgating, reduce the investigate timer
                 if (randomInvestigationPosition != Vector3.zero)
-                    investigateTime -= Time.deltaTime; 
+                    investigateTime -= Time.deltaTime;
 
                 if (investigateTime <= 0)
                 {
                     randomInvestigationPosition = Vector3.zero;
+                    enemyState = EnemyState.Patrol;
                     Debug.Log("Done Investigating");
                 }
 
@@ -219,7 +326,7 @@ public class EnemyController : MonoBehaviour
                     {
                         AtShootPosition = false;
                         randomInvestigationPosition = GetRandomPositionAroundSound();
-                        target.position = randomInvestigationPosition;
+                        target = randomInvestigationPosition;
                     }
                 }
 
@@ -227,17 +334,22 @@ public class EnemyController : MonoBehaviour
 
             case EnemyState.Cover:
                 GameObject coverpoint = findClosestCoverPoint();
-                target = coverpoint.transform;
+                target = coverpoint.transform.position;
 
                 coverWaittime -= Time.deltaTime;
-                if(coverWaittime <= 0)
+                if (coverWaittime <= 0)
                 {
                     enemyState = EnemyState.LocatePlayer;
+                    LocateTime = Random.Range(8, 12);
                     coverWaittime = Random.Range(3f, 5f);
                 }
+
+                Locating = false;
                 break;
             case EnemyState.LocatePlayer:
-                target = Player.transform;
+                target = Player.transform.position;
+
+                Locating = true;
 
                 GetComponent<AIPath>().enableRotation = true;
                 if (hit.collider != null)
@@ -245,13 +357,24 @@ public class EnemyController : MonoBehaviour
                     if (hit.collider.CompareTag("Player"))
                     {
                         Debug.Log("Hit!");
-                        target = transform;
+                        target = transform.position;
 
                         enemyState = EnemyState.Attack;
                     }
                 }
+
+                LocateTime -= Time.deltaTime;
+
+                if (LocateTime <= 0 && Agro == false)
+                {
+                    enemyState = EnemyState.Patrol;
+                    LocateTime = Random.Range(8, 12);
+                }
+
                 break;
             case EnemyState.Attack:
+
+                Locating = false;
 
                 playerpos = Player.transform.position;
 
@@ -260,26 +383,38 @@ public class EnemyController : MonoBehaviour
                 Vector3 rotation = playerpos - transform.position;
 
                 float angle =
-                    Mathf.Atan2(playerpos.y - transform.position.y, playerpos.x - transform.position.x)
-                    * Mathf.Rad2Deg;
+                    Mathf.Atan2(
+                        playerpos.y - transform.position.y,
+                        playerpos.x - transform.position.x
+                    ) * Mathf.Rad2Deg;
 
                 gameObject.transform.rotation = Quaternion.Euler(0, 0, angle - 90);
 
                 shootTime -= Time.deltaTime;
+                attackLength -= Time.deltaTime;
 
-                if(shootTime <= 0) { 
-                                GameObject bullet = poolNew.enemyPool.Get();
-                bullet.transform.position = transform.Find("Front").position;
+                if (shootTime <= 0)
+                {
+                    GameObject bullet = poolNew.enemyPool.Get();
+                    bullet.transform.position = transform.Find("Front").position;
+                    bullet
+                        .GetComponent<EnemyBulletController>()
+                        .InitializeEnemy(weapon, crosshairmovmentAmount);
                     shootTime = 1f;
                 }
 
-           
+                if (attackLength <= 0)
+                {
+                    enemyState = EnemyState.Cover;
+                    attackLength = Random.Range(2f, 3f);
+                }
 
                 if (hit.collider != null)
                 {
                     if (!hit.collider.CompareTag("Player"))
                     {
                         enemyState = EnemyState.LocatePlayer;
+                        LocateTime = Random.Range(8, 12);
                     }
                 }
 
@@ -296,10 +431,12 @@ public class EnemyController : MonoBehaviour
         }
     }
 
-    private GameObject findClosestCoverPoint()
+    GameObject findClosestCoverPoint()
     {
-        GameObject[] objs = GameObject.FindGameObjectWithTag("GameManager").GetComponent<GameManager>().coverPoints;
-
+        GameObject[] objs = GameObject
+            .FindGameObjectWithTag("GameManager")
+            .GetComponent<GameManager>()
+            .coverPoints;
 
         GameObject closestEnemy = null;
         float closestDistance = 0f;
@@ -307,7 +444,7 @@ public class EnemyController : MonoBehaviour
         foreach (var obj in objs)
         {
             float distance = Vector3.Distance(obj.transform.position, transform.position);
-            if(obj.GetComponent<CoverPointScript>().inLineOfSight == false)
+            if (obj.GetComponent<CoverPointScript>().inLineOfSight == false)
             {
                 if (first)
                 {
